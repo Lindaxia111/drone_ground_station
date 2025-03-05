@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>节点实时可视化</title>
+  <style>
+    /* 容器样式 */
+    #viewContainer {
+      width: 800px;   /* 画布宽度，可自行调整 */
+      height: 600px;  /* 画布高度，可自行调整 */
+      border: 1px solid #aaa;
+      position: relative;
+    }
+    /* 绝对定位的节点 */
+    .node {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      text-align: center;
+      color: #fff;
+      font-size: 8px;
+      line-height: 10px;
+    }
+    /* 画线用的 canvas */
+    #topologyCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1; /* 让它在节点底下或上面都可以 */
+    }
+  </style>
+</head>
+<body>
+  <h2>节点实时可视化</h2>
+  <p>此示例每秒钟从后端获取一次节点信息，并在前端绘制。</p>
+  
+  <!-- 容器: 用于放置节点和一个canvas -->
+  <div id="viewContainer">
+    <canvas id="topologyCanvas" width="800" height="600"></canvas>
+  </div>
+
+  <script>
+    const container = document.getElementById("viewContainer");
+    const canvas = document.getElementById("topologyCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // 假设节点的 position 在 0~1 范围，我们将它映射到 800px * 600px 画布上
+    const WIDTH = 800;
+    const HEIGHT = 600;
+
+    function fetchNodesData() {
+      fetch('http://127.0.0.1:5000/nodes')
+        .then(response => response.json())
+        .then(data => {
+		  console.log('Data from server:', data);
+          // data 是后端返回的所有节点数组
+          // 先清空 container 内所有旧的节点 div
+          container.querySelectorAll('.node').forEach(n => n.remove());
+          // 清空连线
+          ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+          // 我们需要一个 Map，方便根据 node_id 快速找到 (x,y)
+          const positions = {};
+
+          // 第一步：先画出每个节点
+          data.forEach(node => {
+            // 从 position 映射到像素坐标
+            const x = node.position[0];
+            const y = node.position[1];
+
+            // 记录到 Map 里
+            positions[node.node_id] = { x, y };
+
+            // 创建一个div当作节点的显示
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'node';
+            nodeDiv.style.left = (x - 5) + 'px';  // 中心对准
+            nodeDiv.style.top = (y - 5) + 'px';
+            nodeDiv.innerText = node.node_id;    // 显示nodeID
+
+            // 根据节点阵营设置颜色
+            if (node.camp === "blue") {
+              nodeDiv.style.background = 'blue';
+            } else {
+              nodeDiv.style.background = 'red';
+            }
+
+            // 把这个节点元素加到 container
+            container.appendChild(nodeDiv);
+          });
+
+          // 第二步：根据 neighbor_ids 画线
+          //   为避免重复，通常只画 node_id < neighbor_id 的连线(无向图)
+          data.forEach(node => {
+            const fromId = node.node_id;
+            const fromPos = positions[fromId];
+            node.neighbor_ids.forEach(nid => {
+              if (nid > fromId) {
+                const toPos = positions[nid];
+                drawLine(fromPos.x, fromPos.y, toPos.x, toPos.y, '#888'); 
+              }
+            });
+          });
+        })
+        .catch(err => {
+          console.log('请求 /nodes 出错: ', err);
+        });
+    }
+
+    // 画线函数
+    function drawLine(x1, y1, x2, y2, color) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // 每秒获取一次数据
+    setInterval(fetchNodesData, 1000);
+  </script>
+</body>
+</html>

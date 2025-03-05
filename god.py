@@ -77,7 +77,7 @@ class God:
             表示为节点1，阵营为蓝色，位置为(1.0, 1.0)，速度为(1.0, 1.0)，加速度为(0.1, 0.1)
             """
             try:
-                with open('config/config.ini', 'r', encoding='utf-8') as f:
+                with open(os.path.join(current_directory, 'config', 'nodes.txt'), 'r', encoding='utf-8') as f:
                     for line in f:
                         parts = line.strip().split()
                         if not parts:
@@ -134,7 +134,7 @@ class God:
                 for other in self.red_nodes:
                     if node.node_id == other.node_id:
                         continue
-                    distance = self.calculate_distance(node.pos, other.pos)
+                    distance = self.calculate_distance(node.position, other.position)
                     if distance < self.neighbor_distance:
                         neighbors.append(other)
                 node.update_neighbors_by_god(neighbors)

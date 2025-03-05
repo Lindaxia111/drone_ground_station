@@ -115,7 +115,7 @@ class Node:
             }
             for neighbor in self.neighbors:
                 delayed_send(sender=self, receiver=neighbor, message=message, delay_t=delay)
-                print(f"Node-{self.node_id} send message to Node-{neighbor.node_id}\n")
+                # print(f"Node-{self.node_id} send message to Node-{neighbor.node_id}\n")
             # 间隔1秒，再发送下一次
             time.sleep(1)
 
