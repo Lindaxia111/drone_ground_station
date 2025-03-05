@@ -2,6 +2,8 @@ import configparser
 import math
 import os
 import random
+import threading
+import time
 
 from node_t import Node
 
@@ -17,8 +19,8 @@ class God:
         self.neighbor_distance = 2.0
         config = configparser.ConfigParser()
         config.read(config_file_path)
-        self.neighbor_distance = float(config.get("network", "NEIGHBOR_DISTANCE"))
-        self.enemy_distance = float(config.get("network", "ENEMY_DISTANCE"))
+        self.neighbor_distance = float(config.get("threshold_distance", "NEIGHBOR_DISTANCE"))
+        self.enemy_distance = float(config.get("threshold_distance", "ENEMY_DISTANCE"))
 
     @staticmethod
     def calculate_distance(position1, position2):
@@ -104,40 +106,58 @@ class God:
 
     def update_blue_neighbors(self):
         """
-        更新当前蓝色节点的邻居节点
+        持续更新当前蓝色节点的邻居节点
         """
-        if len(self.blue_nodes) <= 1:
-            return
-        for node in self.blue_nodes:
-            neighbors = []
-            for other in self.blue_nodes:
-                if node.node_id == other.node_id:
-                    continue
-                distance = self.calculate_distance(node.pos, other.pos)
-                if distance < self.neighbor_distance:
-                    neighbors.append(other)
-            node.update_neighbors_by_god(neighbors)
+        while True:
+            if len(self.blue_nodes) <= 1:
+                continue
+            for node in self.blue_nodes:
+                neighbors = []
+                for other in self.blue_nodes:
+                    if node.node_id == other.node_id:
+                        continue
+                    distance = self.calculate_distance(node.position, other.position)
+                    if distance < self.neighbor_distance:
+                        neighbors.append(other)
+                node.update_neighbors_by_god(neighbors)
+            time.sleep(1.0)
 
     def update_red_neighbors(self):
         """
-        更新当前红色节点的邻居节点
+        持续更新当前红色节点的邻居节点
         """
-        if len(self.red_nodes) <= 1:
-            return
-        for node in self.red_nodes:
-            neighbors = []
-            for other in self.red_nodes:
-                if node.node_id == other.node_id:
-                    continue
-                distance = self.calculate_distance(node.pos, other.pos)
-                if distance < self.neighbor_distance:
-                    neighbors.append(other)
-            node.update_neighbors_by_god(neighbors)
+        while True:
+            if len(self.red_nodes) <= 1:
+                continue
+            for node in self.red_nodes:
+                neighbors = []
+                for other in self.red_nodes:
+                    if node.node_id == other.node_id:
+                        continue
+                    distance = self.calculate_distance(node.pos, other.pos)
+                    if distance < self.neighbor_distance:
+                        neighbors.append(other)
+                node.update_neighbors_by_god(neighbors)
+            time.sleep(1.0)
 
-    @staticmethod
-    def run_node_in_thread(node):
+    def run_node_in_thread(self):
         """
-        这是一个包装函数，用来在线程内执行 node.run()。
+        这是一个包装函数，用来在线程内执行node.run。
         """
-        node.run()
+        for node in self.blue_nodes:
+            thread = threading.Thread(target=node.run)
+            thread.start()
+        for node in self.red_nodes:
+            thread = threading.Thread(target=node.run)
+            thread.start()
+
+    def run(self):
+        self.run_node_in_thread()
+        thread = threading.Thread(target=self.update_blue_neighbors)
+        thread.start()
+        thread = threading.Thread(target=self.update_red_neighbors)
+        thread.start()
+
+
+
 
