@@ -27,10 +27,4 @@ god进行邻居计算和enemy计算,碰撞检测
 传输时仅传输msg，msg打上时间戳，邻居信息时间比自己慢一个时间戳
 msg: [id,pos,vel,acc,timestamp,neighbors,mission_res]
 
-neighbors =[ 
-[id,pos,vel,acc,timestamp,neighbors]
-[id,pos,vel,acc,timestamp,neighbors]
-[id,pos,vel,acc,timestamp,neighbors]
-[id,pos,vel,acc,timestamp,neighbors]
-]
 

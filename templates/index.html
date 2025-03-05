@@ -12,8 +12,8 @@
 
     /* 左侧可视化画布 */
     #viewContainer {
-      width: 800px;
-      height: 600px;
+      width: 400px;
+      height: 300px;
       border: 1px solid #aaa;
       position: relative;
     }
@@ -56,7 +56,7 @@
 </head>
 <body>
   <h2>节点实时可视化</h2>
-  <p>此示例每秒钟从后端获取一次节点信息，左侧是位置/连线动态，右侧是邻居表格。</p>
+  <p>此示例每秒钟从后端获取一次节点信息，左侧是位置动态，右侧是邻居表格。</p>
 
   <!-- 容器，左边画布、右边表格 -->
   <div id="container">
@@ -102,9 +102,6 @@
     const container = document.getElementById("viewContainer");
     const canvas = document.getElementById("topologyCanvas");
     const ctx = canvas.getContext("2d");
-
-    const WIDTH = 400;
-    const HEIGHT = 300;
 
     // 定时获取节点信息
     setInterval(fetchNodesData, 1000);
