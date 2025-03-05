@@ -110,6 +110,7 @@ class God:
         """
         while True:
             if len(self.blue_nodes) <= 1:
+                time.sleep(1.0)
                 continue
             for node in self.blue_nodes:
                 neighbors = []

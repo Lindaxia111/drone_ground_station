@@ -4,14 +4,27 @@
   <meta charset="utf-8">
   <title>节点实时可视化</title>
   <style>
-    /* 容器样式 */
+    /* 整体左右布局 */
+    #container {
+      display: flex;           /* 左右并排 */
+      align-items: flex-start; /* 顶部对齐 */
+    }
+
+    /* 左侧可视化画布 */
     #viewContainer {
-      width: 800px;   /* 画布宽度，可自行调整 */
-      height: 600px;  /* 画布高度，可自行调整 */
+      width: 800px;
+      height: 600px;
       border: 1px solid #aaa;
       position: relative;
     }
-    /* 绝对定位的节点 */
+    /* 用于画连线的 canvas */
+    #topologyCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    /* 节点小圆点 */
     .node {
       position: absolute;
       width: 10px;
@@ -22,93 +35,129 @@
       font-size: 8px;
       line-height: 10px;
     }
-    /* 画线用的 canvas */
-    #topologyCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1; /* 让它在节点底下或上面都可以 */
+
+    /* 右侧放两个表格 */
+    #tablesContainer {
+      margin-left: 20px;  /* 与画布留点空隙 */
+    }
+    table {
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      min-width: 200px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <h2>节点实时可视化</h2>
-  <p>此示例每秒钟从后端获取一次节点信息，并在前端绘制。</p>
-  
-  <!-- 容器: 用于放置节点和一个canvas -->
-  <div id="viewContainer">
-    <canvas id="topologyCanvas" width="800" height="600"></canvas>
+  <p>此示例每秒钟从后端获取一次节点信息，左侧是位置/连线动态，右侧是邻居表格。</p>
+
+  <!-- 容器，左边画布、右边表格 -->
+  <div id="container">
+    <!-- 左侧可视化区域 -->
+    <div id="viewContainer">
+      <canvas id="topologyCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <!-- 右侧表格容器 -->
+    <div id="tablesContainer">
+      <h3>蓝方节点</h3>
+      <table id="blueTable">
+        <thead>
+          <tr>
+            <th>节点ID</th>
+            <th>邻居列表</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 这里通过JS动态插入 -->
+        </tbody>
+      </table>
+
+      <h3>红方节点</h3>
+      <table id="redTable">
+        <thead>
+          <tr>
+            <th>节点ID</th>
+            <th>邻居列表</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 这里通过JS动态插入 -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script>
+    // ---------------------------
+    // 1) 画布 & 节点可视化部分
+    // ---------------------------
     const container = document.getElementById("viewContainer");
     const canvas = document.getElementById("topologyCanvas");
     const ctx = canvas.getContext("2d");
 
-    // 假设节点的 position 在 0~1 范围，我们将它映射到 800px * 600px 画布上
     const WIDTH = 800;
     const HEIGHT = 600;
+
+    // 定时获取节点信息
+    setInterval(fetchNodesData, 1000);
 
     function fetchNodesData() {
       fetch('http://127.0.0.1:5000/nodes')
         .then(response => response.json())
         .then(data => {
-		  console.log('Data from server:', data);
-          // data 是后端返回的所有节点数组
-          // 先清空 container 内所有旧的节点 div
-          container.querySelectorAll('.node').forEach(n => n.remove());
-          // 清空连线
-          ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
-          // 我们需要一个 Map，方便根据 node_id 快速找到 (x,y)
-          const positions = {};
-
-          // 第一步：先画出每个节点
-          data.forEach(node => {
-            // 从 position 映射到像素坐标
-            const x = node.position[0];
-            const y = node.position[1];
-
-            // 记录到 Map 里
-            positions[node.node_id] = { x, y };
-
-            // 创建一个div当作节点的显示
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = 'node';
-            nodeDiv.style.left = (x - 5) + 'px';  // 中心对准
-            nodeDiv.style.top = (y - 5) + 'px';
-            nodeDiv.innerText = node.node_id;    // 显示nodeID
-
-            // 根据节点阵营设置颜色
-            if (node.camp === "blue") {
-              nodeDiv.style.background = 'blue';
-            } else {
-              nodeDiv.style.background = 'red';
-            }
-
-            // 把这个节点元素加到 container
-            container.appendChild(nodeDiv);
-          });
-
-          // 第二步：根据 neighbor_ids 画线
-          //   为避免重复，通常只画 node_id < neighbor_id 的连线(无向图)
-          data.forEach(node => {
-            const fromId = node.node_id;
-            const fromPos = positions[fromId];
-            node.neighbor_ids.forEach(nid => {
-              if (nid > fromId) {
-                const toPos = positions[nid];
-                drawLine(fromPos.x, fromPos.y, toPos.x, toPos.y, '#888'); 
-              }
-            });
-          });
+          // 先可视化节点 & 连线
+          renderNodesAndLinks(data);
+          // 再更新邻居表格
+          updateNeighborTables(data);
         })
-        .catch(err => {
-          console.log('请求 /nodes 出错: ', err);
-        });
+        .catch(err => console.log('请求 /nodes 出错:', err));
     }
 
-    // 画线函数
+    // 绘制节点+连线
+    function renderNodesAndLinks(data) {
+      // 清空上次渲染
+      container.querySelectorAll('.node').forEach(div => div.remove());
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      // 记录每个node的像素坐标
+      const posMap = {};
+
+      // 1) 绘制节点
+      data.forEach(node => {
+        const x = node.position[0];
+        const y = node.position[1];
+        posMap[node.node_id] = { x, y };
+
+        // 创建节点小圆点
+        const nd = document.createElement('div');
+        nd.className = 'node';
+        nd.style.left = (x - 5) + 'px';
+        nd.style.top = (y - 5) + 'px';
+
+        // 区分蓝/红阵营
+        nd.style.backgroundColor = (node.camp === 'blue') ? 'blue' : 'red';
+        nd.innerText = node.node_id;
+        container.appendChild(nd);
+      });
+
+      // 2) 绘制连线(无向图, 避免重复画线：只画 node_id < neighbor_id)
+      data.forEach(node => {
+        const fromId = node.node_id;
+        node.neighbor_ids.forEach(nid => {
+          if (nid > fromId) {
+            drawLine(posMap[fromId].x, posMap[fromId].y,
+                     posMap[nid].x, posMap[nid].y, '#888');
+          }
+        });
+      });
+    }
+
     function drawLine(x1, y1, x2, y2, color) {
       ctx.beginPath();
       ctx.moveTo(x1, y1);
@@ -118,8 +167,41 @@
       ctx.stroke();
     }
 
-    // 每秒获取一次数据
-    setInterval(fetchNodesData, 1000);
+    // ---------------------------
+    // 2) 邻居表格部分
+    // ---------------------------
+    function updateNeighborTables(data) {
+      // 分别获取蓝方表格和红方表格的 <tbody>
+      const blueBody = document.querySelector('#blueTable tbody');
+      const redBody  = document.querySelector('#redTable tbody');
+
+      // 清空旧内容
+      blueBody.innerHTML = '';
+      redBody.innerHTML = '';
+
+      // 根据节点阵营，插入对应表格
+      data.forEach(node => {
+        // 把邻居ID数组拼成字符串
+        const neighborsStr = node.neighbor_ids.join(', ');
+
+        // 创建一行 <tr>
+        let tr = document.createElement('tr');
+        let tdId = document.createElement('td');
+        let tdNeighbors = document.createElement('td');
+
+        tdId.innerText = node.node_id;
+        tdNeighbors.innerText = neighborsStr;
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdNeighbors);
+
+        if (node.camp === 'blue') {
+          blueBody.appendChild(tr);
+        } else {
+          redBody.appendChild(tr);
+        }
+      });
+    }
   </script>
 </body>
 </html>
