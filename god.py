@@ -110,7 +110,7 @@ class God:
         """
         while True:
             if len(self.blue_nodes) <= 1:
-                time.sleep(1.0)
+                time.sleep(0.1)
                 continue
             for node in self.blue_nodes:
                 neighbors = []
@@ -121,7 +121,7 @@ class God:
                     if distance < self.neighbor_distance:
                         neighbors.append(other)
                 node.update_neighbors_by_god(neighbors)
-            time.sleep(1.0)
+            time.sleep(0.1)
 
     def update_red_neighbors(self):
         """
@@ -129,6 +129,7 @@ class God:
         """
         while True:
             if len(self.red_nodes) <= 1:
+                time.sleep(0.1)
                 continue
             for node in self.red_nodes:
                 neighbors = []
@@ -139,7 +140,7 @@ class God:
                     if distance < self.neighbor_distance:
                         neighbors.append(other)
                 node.update_neighbors_by_god(neighbors)
-            time.sleep(1.0)
+            time.sleep(0.1)
 
     def run_node_in_thread(self):
         """
@@ -153,11 +154,12 @@ class God:
             thread.start()
 
     def run(self):
-        self.run_node_in_thread()
         thread = threading.Thread(target=self.update_blue_neighbors)
         thread.start()
         thread = threading.Thread(target=self.update_red_neighbors)
         thread.start()
+        self.run_node_in_thread()
+
 
 
 

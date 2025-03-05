@@ -28,7 +28,7 @@ def get_nodes():
 
     for node in all_nodes:
         with node._lock:
-            neighbor_ids = [nb.node_id for nb in node.neighbors]
+            neighbor_ids = list(node.neighbor_table.keys())
             # 根据阵营设置不同的颜色
             color = 'blue' if node.camp == 'blue' else 'red'
 

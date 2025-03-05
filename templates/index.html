@@ -34,6 +34,8 @@
       color: #fff;
       font-size: 8px;
       line-height: 10px;
+      cursor: pointer; /* 鼠标悬停变成小手，方便提示可点 */
+      z-index: 2; /* canvas是1，这里比它大就可以点到 */
     }
 
     /* 右侧放两个表格 */
@@ -101,8 +103,8 @@
     const canvas = document.getElementById("topologyCanvas");
     const ctx = canvas.getContext("2d");
 
-    const WIDTH = 800;
-    const HEIGHT = 600;
+    const WIDTH = 400;
+    const HEIGHT = 300;
 
     // 定时获取节点信息
     setInterval(fetchNodesData, 1000);
@@ -143,19 +145,31 @@
         // 区分蓝/红阵营
         nd.style.backgroundColor = (node.camp === 'blue') ? 'blue' : 'red';
         nd.innerText = node.node_id;
-        container.appendChild(nd);
-      });
 
-      // 2) 绘制连线(无向图, 避免重复画线：只画 node_id < neighbor_id)
-      data.forEach(node => {
-        const fromId = node.node_id;
-        node.neighbor_ids.forEach(nid => {
-          if (nid > fromId) {
-            drawLine(posMap[fromId].x, posMap[fromId].y,
-                     posMap[nid].x, posMap[nid].y, '#888');
-          }
-        });
-      });
+        // 给节点 div 注册点击事件
+        nd.addEventListener('click', () => {
+          // 点击时弹窗显示该节点信息
+          alert(`
+                节点ID: ${node.node_id}
+                位置: ${node.position}
+                速度: ${node.velocity}
+                加速度: ${node.acceleration}
+              `);
+            });
+
+            container.appendChild(nd);
+          });
+
+<!--      // 2) 绘制连线(无向图, 避免重复画线：只画 node_id < neighbor_id)-->
+<!--      data.forEach(node => {-->
+<!--        const fromId = node.node_id;-->
+<!--        node.neighbor_ids.forEach(nid => {-->
+<!--          if (nid > fromId) {-->
+<!--            drawLine(posMap[fromId].x, posMap[fromId].y,-->
+<!--                     posMap[nid].x, posMap[nid].y, '#888');-->
+<!--          }-->
+<!--        });-->
+<!--      });-->
     }
 
     function drawLine(x1, y1, x2, y2, color) {
