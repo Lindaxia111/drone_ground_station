@@ -6,6 +6,7 @@ import random
 import shutil
 import threading
 import time
+from datetime import datetime
 
 from model import Model
 
@@ -42,6 +43,11 @@ def delayed_send(sender, receiver, message, delay_t=1.0):
         receiver.store_incoming(sender.node_id, message)
     threading.Thread(target=_task, daemon=True).start()
 
+def timestamp_to_datetime(timestamp):
+    """将时间戳转换为可读的时间字符串"""
+    dt_object = datetime.fromtimestamp(timestamp)
+    return dt_object.strftime("%Y-%m-%d %H:%M:%S")
+
 class Node:
     def __init__(self, god, camp):
         self.running = True
@@ -57,7 +63,6 @@ class Node:
         self.neighbor_table = {}
         self.buffered_neighbors = {}  # 缓冲区，存储邻居节点信息
         self.incoming_queue = queue.Queue()  # 消息队列
-        self.last_cycle_msgs = []  # 缓存上一时刻的消息
         self.camp = camp  # 阵营：蓝色（"blue"） or 红色（"red"）
 
         # 加一把锁，用于 neighbor_table 的并发读写
@@ -102,12 +107,11 @@ class Node:
             if self.buffered_neighbors:
                 for sender_id, message in self.buffered_neighbors.items():
                     # 记录日志
-                    self.logger.debug(f"Node-{self.node_id} 应用上一轮邻居数据: {sender_id}: {message}")
-                # self.logger.debug(f"Node-{self.node_id} 应用上一轮邻居数据: {[k for k in self.buffered_neighbors.keys()]}")
+                    self.logger.debug(f"接收到节点{sender_id}数据: {message}")
                 self.neighbor_table = self.buffered_neighbors.copy()  # 更新 neighbor_table
                 self.buffered_neighbors.clear()  # 清空缓冲区，为下一轮存储新的邻居信息
 
-    def _update_neighbor_table(self, sender_id, message, arrival_time):
+    def _update_neighbor_table(self, sender_id, message):
         """不立即更新邻居表，而是先存入缓冲区，下一轮再更新"""
         with self._lock:
             if sender_id not in self.buffered_neighbors:
@@ -119,8 +123,8 @@ class Node:
                 "acceleration": message["acceleration"],
                 "group_id": message["group_id"],
                 # "neighbor_table": message["neighbor_table"],
-                "last_send_time": message["send_time"],
-                "last_recv_time": arrival_time
+                "send_time": timestamp_to_datetime(message["send_time"]),
+                "recv_time": timestamp_to_datetime(time.time()+delay)
             })
 
     def _update_state(self):
@@ -131,8 +135,7 @@ class Node:
         """
         这里设置信息队列，存储接收到的信息
         """
-        arrival_time = time.time()
-        self.incoming_queue.put((sender_id, message, arrival_time))
+        self.incoming_queue.put((sender_id, message))
 
     def _msg_send_to_neighbors(self):
         """
@@ -156,18 +159,16 @@ class Node:
 
     def _collect_incoming_for_next_cycle(self):
         """
-        本时刻把 incoming_queue 里的新消息全部收集到 last_cycle_msgs，发送消息至
+        本时刻把 incoming_queue 里的新消息全部收集到 buffered_neighbors
         这样下一时刻再处理它们
         """
         new_msgs = []
         while not self.incoming_queue.empty():
-            sender_id, message, arrival_time = self.incoming_queue.get()
-            new_msgs.append((sender_id, message, arrival_time))
-        # # 把这批新消息放进 last_cycle_msgs
-        # self.last_cycle_msgs.extend(new_msgs)
+            sender_id, message = self.incoming_queue.get()
+            new_msgs.append((sender_id, message))
         # 把这批新消息存入 buffered_neighbors
-        for sender_id, message, arrival_time in new_msgs:
-            self._update_neighbor_table(sender_id, message, arrival_time)
+        for sender_id, message in new_msgs:
+            self._update_neighbor_table(sender_id, message)
 
     def stop(self):
         """
@@ -178,7 +179,7 @@ class Node:
     def run(self):
         """
         统一用一个循环模拟收发时间步：
-          1) 处理上一时刻的消息 (last_cycle_msgs)
+          1) 处理上一时刻的消息
           2) 更新自身状态
           3) 发送本时刻的消息
           4) 收集当前时刻收到的消息 (incoming_queue)，留到下一时刻处理
@@ -190,10 +191,11 @@ class Node:
             self._update_state()
             # 向所有邻居发送本时刻消息
             self._msg_send_to_neighbors()
-            # 暂停1s，进入下一轮，发送频率为1hz
-            time.sleep(1)
-            # 收集下一时刻时刻收到的消息进行处理
+            # 收集本时刻收到的消息，等待下一时刻进行处理
             self._collect_incoming_for_next_cycle()
+            # 暂停1s，进入下一轮
+            time.sleep(delay)
+
 
 
     def update_neighbors_by_god(self, new_neighbors):
