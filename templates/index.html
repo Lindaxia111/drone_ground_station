@@ -12,8 +12,8 @@
 
     /* 左侧可视化画布 */
     #viewContainer {
-      width: 400px;
-      height: 300px;
+      width: 800px;
+      height: 600px;
       border: 1px solid #aaa;
       position: relative;
     }
@@ -56,7 +56,7 @@
 </head>
 <body>
   <h2>节点实时可视化</h2>
-  <p>此示例每秒钟从后端获取一次节点信息，左侧是位置动态，右侧是邻居表格。</p>
+  <p>此示例每秒钟从后端获取一次节点信息，左侧是位置/连线动态，右侧是邻居表格。</p>
 
   <!-- 容器，左边画布、右边表格 -->
   <div id="container">
@@ -103,6 +103,9 @@
     const canvas = document.getElementById("topologyCanvas");
     const ctx = canvas.getContext("2d");
 
+    const WIDTH = 800;
+    const HEIGHT = 600;
+
     // 定时获取节点信息
     setInterval(fetchNodesData, 1000);
 
@@ -118,7 +121,7 @@
         .catch(err => console.log('请求 /nodes 出错:', err));
     }
 
-    // 绘制节点+连线
+    // 绘制节点
     function renderNodesAndLinks(data) {
       // 清空上次渲染
       container.querySelectorAll('.node').forEach(div => div.remove());
@@ -146,7 +149,7 @@
         // 给节点 div 注册点击事件
         nd.addEventListener('click', () => {
           // 点击时弹窗显示该节点信息
-          alert(`
+          alert( `
                 节点ID: ${node.node_id}
                 位置: ${node.position}
                 速度: ${node.velocity}

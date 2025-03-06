@@ -142,21 +142,47 @@ class God:
                 node.update_neighbors_by_god(neighbors)
             time.sleep(0.1)
 
+    def update_blue_enemies(self):
+        while True:
+            for blue_node in self.blue_nodes:
+                enemies = []
+                blue_position = blue_node.position
+                for red_node in self.red_nodes:
+                    red_position = red_node.position
+                    distance = self.calculate_distance(blue_position, red_position)
+                    if distance < self.enemy_distance:
+                        enemies.append(red_node)
+                blue_node.update_enemies_by_god(enemies)
+            time.sleep(0.1)
+
+    def update_red_enemies(self):
+        while True:
+            for red_node in self.red_nodes:
+                enemies = []
+                red_position = red_node.position
+                for blue_node in self.blue_nodes:
+                    blue_position = blue_node.position
+                    distance = self.calculate_distance(blue_position, red_position)
+                    if distance < self.enemy_distance:
+                        enemies.append(blue_node)
+                red_node.update_enemies_by_god(enemies)
+            time.sleep(0.1)
+
     def run_node_in_thread(self):
         """
         这是一个包装函数，用来在线程内执行node.run。
         """
         for node in self.blue_nodes:
-            thread = threading.Thread(target=node.run)
+            thread = threading.Thread(target=node.run, daemon=True)
             thread.start()
         for node in self.red_nodes:
-            thread = threading.Thread(target=node.run)
+            thread = threading.Thread(target=node.run, daemon=True)
             thread.start()
 
     def run(self):
-        thread = threading.Thread(target=self.update_blue_neighbors)
+        thread = threading.Thread(target=self.update_blue_neighbors, daemon=True)
         thread.start()
-        thread = threading.Thread(target=self.update_red_neighbors)
+        thread = threading.Thread(target=self.update_red_neighbors, daemon=True)
         thread.start()
         self.run_node_in_thread()
 
