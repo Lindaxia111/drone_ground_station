@@ -52,11 +52,26 @@
       padding: 4px 8px;
       text-align: center;
     }
+
+    /* 右侧放两个表格 */
+    #tablesContainer_red {
+      margin-left: 20px;  /* 与画布留点空隙 */
+    }
+    table {
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      min-width: 200px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <h2>节点实时可视化</h2>
-  <p>此示例每秒钟从后端获取一次节点信息，左侧是位置/连线动态，右侧是邻居表格。</p>
+  <p>每秒从后端获取一次信息，左侧是位置，右侧是邻居表格。</p>
 
   <!-- 容器，左边画布、右边表格 -->
   <div id="container">
@@ -66,7 +81,7 @@
     </div>
 
     <!-- 右侧表格容器 -->
-    <div id="tablesContainer">
+    <div id="tablesContainer_red">
       <h3>蓝方节点</h3>
       <table id="blueTable">
         <thead>
@@ -79,8 +94,10 @@
           <!-- 这里通过JS动态插入 -->
         </tbody>
       </table>
+  </div>
 
-      <h3>红方节点</h3>
+  <div id="tablesContainer">
+     <h3>红方节点</h3>
       <table id="redTable">
         <thead>
           <tr>
@@ -93,7 +110,6 @@
         </tbody>
       </table>
     </div>
-  </div>
 
   <script>
     // ---------------------------

@@ -84,8 +84,8 @@ class Node:
         self.velocity = vel
         self.acceleration = acc
         # 日志文件路径（每个节点一个日志文件）
-        log_file_path = os.path.join(log_directory, f"node_{self.node_id}_{self.camp}.log")
-        self.logger = logging.getLogger(f"NodeLogger-{self.node_id}")
+        log_file_path = os.path.join(log_directory, f"{self.camp}_node_{self.node_id}.log")
+        self.logger = logging.getLogger(f"NodeLogger-{self.node_id}-{self.camp}")
         self.logger.setLevel(logging.DEBUG)
         # 创建 FileHandler，并设置好输出格式
         file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
@@ -123,8 +123,10 @@ class Node:
                 "acceleration": message["acceleration"],
                 "group_id": message["group_id"],
                 # "neighbor_table": message["neighbor_table"],
-                "send_time": timestamp_to_datetime(message["send_time"]),
-                "recv_time": timestamp_to_datetime(time.time()+delay)
+                # "send_time": timestamp_to_datetime(message["send_time"]),
+                # "recv_time": timestamp_to_datetime(time.time()+delay)
+                "send_time": message["send_time"],
+                "recv_time": time.time()+delay
             })
 
     def _update_state(self):
@@ -195,8 +197,6 @@ class Node:
             self._collect_incoming_for_next_cycle()
             # 暂停1s，进入下一轮
             time.sleep(delay)
-
-
 
     def update_neighbors_by_god(self, new_neighbors):
         """
