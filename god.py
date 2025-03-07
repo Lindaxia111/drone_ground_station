@@ -146,11 +146,8 @@ class God:
         while True:
             for blue_node in self.blue_nodes:
                 enemies = []
-                blue_position = blue_node.position
                 for red_node in self.red_nodes:
-                    red_position = red_node.position
-                    distance = self.calculate_distance(blue_position, red_position)
-                    if distance < self.enemy_distance:
+                    if blue_node.detect_enemy(red_node):
                         enemies.append(red_node)
                 blue_node.update_enemies_by_god(enemies)
             time.sleep(0.1)
@@ -159,11 +156,8 @@ class God:
         while True:
             for red_node in self.red_nodes:
                 enemies = []
-                red_position = red_node.position
                 for blue_node in self.blue_nodes:
-                    blue_position = blue_node.position
-                    distance = self.calculate_distance(blue_position, red_position)
-                    if distance < self.enemy_distance:
+                    if red_node.detect_enemy(blue_node):
                         enemies.append(blue_node)
                 red_node.update_enemies_by_god(enemies)
             time.sleep(0.1)
@@ -183,6 +177,10 @@ class God:
         thread = threading.Thread(target=self.update_blue_neighbors, daemon=True)
         thread.start()
         thread = threading.Thread(target=self.update_red_neighbors, daemon=True)
+        thread.start()
+        thread = threading.Thread(target=self.update_blue_enemies, daemon=True)
+        thread.start()
+        thread = threading.Thread(target=self.update_red_enemies, daemon=True)
         thread.start()
         self.run_node_in_thread()
 

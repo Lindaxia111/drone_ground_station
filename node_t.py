@@ -1,5 +1,6 @@
 import configparser
 import logging
+import math
 import os
 import queue
 import random
@@ -18,6 +19,7 @@ config = configparser.ConfigParser()
 config.read(config_file_path)
 # 读取配置文件中的发送延迟
 delay = float(config.get("send_delay", "DELAY"))
+detect_radius = float(config.get("detect_radius", "DETECT_RADIUS"))
 
 # 创建日志目录
 log_directory = os.path.join(current_directory, "logs")
@@ -60,7 +62,8 @@ class Node:
         self.group_id = 0
         self.neighbors = []
         self.enemies = []
-        self.neighbor_table = {}
+        self.neighbor_table = {} # 邻居节点表
+        self.detected_targets = {} # 检测到的敌方节点
         self.buffered_neighbors = {}  # 缓冲区，存储邻居节点信息
         self.incoming_queue = queue.Queue()  # 消息队列
         self.camp = camp  # 阵营：蓝色（"blue"） or 红色（"red"）
@@ -101,6 +104,38 @@ class Node:
         # 不让日志传递到根 Logger，可设置
         self.logger.propagate = False
 
+    def detect_enemy(self, enemy):
+        """
+        在当前节点前进方向 ±30°，半径 50 范围内，检测敌方节点
+        检测到返回True，否则返回False
+        """
+        if not self.velocity or (self.velocity[0] == 0 and self.velocity[1] == 0):
+            return False # 如果没有速度，不检测
+
+        vx, vy = self.velocity
+        speed = math.sqrt(vx ** 2 + vy ** 2)
+        if speed == 0:
+            return  # 速度为 0，方向未定义，跳过检测
+        # 归一化速度方向向量
+        unit_vx = vx / speed
+        unit_vy = vy / speed
+        # 清空已检测列表
+        self.detected_targets = {}
+
+        ex, ey = enemy.position
+        sx, sy = self.position
+        dx, dy = ex - sx, ey - sy  # 目标相对本节点的向量
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+        # 目标距离是否在设定的探查半径以内
+        if distance > detect_radius:
+            return False
+        # 计算方向夹角 cos(θ) = (dx, dy) ⋅ (unit_vx, unit_vy) / |dx, dy|
+        dot_product = dx * unit_vx + dy * unit_vy
+        cos_theta = dot_product / distance  # 余弦值
+
+        if cos_theta >= 0.866:  # cos(30°) ≈ 0.866
+            return True
+
     def _apply_buffered_neighbors(self):
         """把上一轮缓冲的邻居数据应用到 neighbor_table"""
         with self._lock:
@@ -118,6 +153,7 @@ class Node:
                 self.buffered_neighbors[sender_id] = {}
 
             self.buffered_neighbors[sender_id].update({
+                "node_id": message["id"],
                 "position": message["position"],
                 "velocity": message["velocity"],
                 "acceleration": message["acceleration"],
@@ -207,10 +243,10 @@ class Node:
             self.neighbors = new_neighbors
             # 2) 得到新邻居的 ID 集合
             new_ids = set()
-            for nb in new_neighbors:
-                # 如果 nb 是 Node 对象，就用 nb.node_id
-                if hasattr(nb, 'node_id'):
-                    new_ids.add(nb.node_id)
+            for node in new_neighbors:
+                # 如果 node 是 Node 对象，就用 nb.node_id
+                if hasattr(node, 'node_id'):
+                    new_ids.add(node.node_id)
             # 当前 neighbor_table 中记录的旧邻居
             old_ids = set(self.neighbor_table.keys())
             # 做差集，找出那些已经不在新邻居列表里的节点
@@ -219,7 +255,18 @@ class Node:
             for rid in to_remove:
                 del self.neighbor_table[rid]
 
-    def update_enemies_by_god(self, new_neighbors):
-        pass
-
+    def update_enemies_by_god(self, new_enemies):
+        with self._lock:
+            self.enemies = new_enemies
+            self.detected_targets = {}
+            for node in self.enemies:
+                if hasattr(node, 'node_id'):
+                    self.detected_targets[node.node_id] = {
+                        "node_id": node.node_id,
+                        "position": node.position,
+                        "velocity": node.velocity,
+                        "acceleration": node.acceleration
+                    }
+            if self.detected_targets:
+                print(f"Node {self.node_id} detected enemies: {self.detected_targets}")
 
